@@ -1,0 +1,8 @@
+node_modules/
+.next/
+__pycache__/
+.venv/
+backend/brandproof.db
+backend/uploads/
+.env
+*.tsbuildinfo
