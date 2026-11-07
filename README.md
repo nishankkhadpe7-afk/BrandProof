@@ -10,7 +10,7 @@ A draft can sound on-brand and still be wrong. BrandProof ties every finding to 
 
 > Scope: a single-workspace prototype that uses fictional brand data (Lumora / Aura Earbuds). Findings come from seeded guidelines and facts, not measured customer results. Role switching is a demo convenience, not authentication.
 
-**Live demo:** `<add Railway frontend URL>` · **API docs:** `<add Railway backend URL>/docs`
+**Live demo:** `<add Vercel URL>` · **API docs:** `<add Render URL>/docs`
 
 ## Quick start
 
@@ -54,7 +54,7 @@ If the API runs somewhere other than `http://localhost:8000`, set `NEXT_PUBLIC_A
 - [AI/LLM integration](#aillm-integration)
 - [Outputs and user interface](#outputs-and-user-interface)
 - [Installation, configuration and tests](#installation-configuration-and-tests)
-- [Deploy on Railway](#deploy-on-railway)
+- [Deploy (Render + Vercel, free)](#deploy-render--vercel-free)
 - [Status and limitations](#status-and-limitations)
 - [Repository map](#repository-map)
 
@@ -212,22 +212,17 @@ python -m app.seed --reset      # fresh demo data (stop the API first)
 
 The tests cover the evidence statuses, the ambiguity gate, RBAC, the approval gate, revise and re-run, the disclaimer insert, image checks, DOCX compile, the LLM path with a mocked model and malformed-rule safety.
 
-## Deploy on Railway
+## Deploy (Render + Vercel, free)
 
-Deploy two services from the same repo, each with its own root directory. Config is in [backend/railway.json](backend/railway.json) and [frontend/railway.json](frontend/railway.json).
+**1. Backend on Render** (config in [render.yaml](render.yaml))
+- render.com → **New → Blueprint** → select this repo → enter `GEMINI_API_KEY` when asked.
+- Check `https://<backend>.onrender.com/api/health` returns `"ok": true`.
 
-**1. Backend**
-- New Project → Deploy from GitHub repo → **Root Directory:** `backend`
-- If Railway doesn't pick up the config, set the config file path to `/backend/railway.json`.
-- Variables: `LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-2.5-flash`, `GEMINI_API_KEY=…`, `BRANDPROOF_AUTOSEED=1`, `CORS_ORIGINS=*`
-- Networking → Generate Domain → check `https://<backend>/api/health` returns `"ok": true`
+**2. Frontend on Vercel**
+- vercel.com → **Add New → Project** → this repo → **Root Directory:** `frontend`.
+- Environment variable `NEXT_PUBLIC_API_URL=https://<backend>.onrender.com` (no trailing slash), then **Deploy**. Redeploy if you change it later.
 
-**2. Frontend**
-- + New → same repo → **Root Directory:** `frontend` (config path `/frontend/railway.json` if needed)
-- Variable `NEXT_PUBLIC_API_URL=https://<backend>` with no trailing slash. Set it before the first build; redeploy if you change it.
-- Generate Domain. This is the public app URL.
-
-Railway gives no permanent disk by default, so SQLite resets on redeploy and the demo data re-seeds itself. To keep data, attach a Volume at `/app/data` and set `BRANDPROOF_DB=/app/data/brandproof.db`.
+Render's free tier sleeps after about 15 minutes idle, so the first request can take 30–60 seconds. A free uptime monitor hitting `/api/health` every 10 minutes keeps it awake. The free disk is not persistent: SQLite resets on restart and the demo data re-seeds itself.
 
 ## Status and limitations
 
