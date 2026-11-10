@@ -82,6 +82,10 @@ export default function Login() {
               );
             })}
           </div>
+          <p className="muted small demo-creds">
+            Using the Figma plugin or the API? Sign in with any demo email, e.g. <code>meera@agency.demo</code> (creator)
+            or <code>kabir@lumora.demo</code> (reviewer), password <code>demo-pass-2026</code>.
+          </p>
           <p className="muted small">Demo brands and data are fictional.</p>
         </>)}
       </div>

@@ -228,6 +228,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--i
 .or { display: flex; align-items: center; gap: 12px; color: var(--ink-3); font-size: 13px; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .demo-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); }
+.demo-creds { line-height: 1.55; } .demo-creds code { user-select: all; }
 .demo-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 11px 14px; border: 0; border-top: 1px solid var(--line); background: none; cursor: pointer; font-size: 14px; }
 .demo-card:first-child { border-top: 0; }
 .demo-card:hover { background: var(--hover); }

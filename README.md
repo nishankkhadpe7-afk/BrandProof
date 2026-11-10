@@ -37,7 +37,7 @@ npm install
 npm run dev                                           # http://localhost:3000
 ```
 
-Demo accounts (password `demo-pass-2026`, or use the buttons on the sign-in page):
+Demo accounts (password `demo-pass-2026`, or use the buttons on the sign-in page). Use these to sign in to the Figma plugin and the API too:
 
 | Account | Lumora | Verdant Oat Co. |
 | --- | --- | --- |
@@ -167,7 +167,9 @@ The engine tag shows who found it: **Exact rule** (deterministic), **Matched by 
 | --- | --- | --- |
 | `LLM_PROVIDER` | empty | `gemini`, `openai` or `anthropic`; empty = deterministic + local semantic |
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | empty | Key for the chosen provider |
-| `LLM_MODEL` | provider default | Model override |
+| `LLM_MODEL` | provider default | Model override (e.g. `gemini-3.5-flash-lite`) |
+| `GROQ_API_KEY` | empty | Optional fallback: used when the main provider is busy, rate-limited or failing |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model override |
 | `SEMANTIC_REMOTE` | `1` | Use Gemini embeddings when the provider is Gemini |
 | `SEMANTIC_T_LOCAL` / `SEMANTIC_T_REMOTE` | `0.20` / `0.78` | Retrieval thresholds |
 | `TESSERACT_CMD` | auto | Path to tesseract if it isn't on PATH |
@@ -176,7 +178,7 @@ The engine tag shows who found it: **Exact rule** (deterministic), **Matched by 
 | `BRANDPROOF_AUTOSEED` | `1` | Seed demo data when there are no users |
 | `DATABASE_URL` | empty | `postgresql://…` switches to PostgreSQL + pgvector; empty = SQLite |
 | `BRANDPROOF_DB` | `backend/brandproof.db` | SQLite path (when `DATABASE_URL` is empty) |
-| `CORS_ORIGINS` | `*` | Allowed web origins |
+| `CORS_ORIGINS` | `*` | Allowed web origins (the Figma plugin origin is always allowed) |
 | `RATE_LIMIT` / `RATE_LIMIT_SCALE` | `1` / `1` | Turn rate limiting off, or scale all limits |
 | `MAX_UPLOAD_MB` | `15` | Largest accepted upload |
 | `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN` | empty | Send email through the Gmail API (HTTPS; works on Render free) |
@@ -202,6 +204,10 @@ Tests cover authentication, registration and isolation, the agency case across t
 **Frontend on Vercel:** root directory `frontend`, environment variable `NEXT_PUBLIC_API_URL=https://<backend>.onrender.com`.
 
 **Database (optional, recommended):** create a free Postgres on Neon or Supabase (both include pgvector), copy the connection string (with `?sslmode=require`) into Render's `DATABASE_URL`, and redeploy. Tables and the `vector` extension are created on start, demo data seeds once, and accounts, content and images (stored in the `blobs` table) survive restarts. `/api/health` then shows `"db": "postgresql + pgvector"`. Without it the service uses SQLite, which Render's free disk wipes on restart.
+
+**AI resilience:** if a model is retired, busy or rate-limited, the next model is tried, then Groq (if `GROQ_API_KEY` is set); if all are unavailable, checks run on the deterministic engine and semantic layer for two minutes instead of waiting. Demo data is seeded without the AI, so restarts don't spend API quota.
+
+**Render environment (backend):** `LLM_PROVIDER=gemini`, `GEMINI_API_KEY`, `LLM_MODEL`, optional `GROQ_API_KEY`, `CORS_ORIGINS=https://<frontend>.vercel.app`, `BRANDPROOF_AUTOSEED=1`, and for email `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `MAIL_FROM`, `APP_URL`. If deploys show as *Manual*, turn on Auto-Deploy or use **Manual Deploy → Deploy latest commit** after each push. **Vercel:** `NEXT_PUBLIC_API_URL`, then redeploy (it is baked in at build time).
 
 Render's free plan sleeps after about 15 minutes idle; the first request takes 30–60 s.
 
