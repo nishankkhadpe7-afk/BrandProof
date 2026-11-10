@@ -6,15 +6,16 @@ BrandProof checks marketing content before it goes live. It turns written brand 
 
 > Scope: a working prototype using two fictional brands (Lumora / Aura Earbuds and Verdant Oat Co.). Results come from seeded guidelines and facts, not measured customer data.
 
-**Live demo:** https://brand-proof-three.vercel.app · **API docs:** https://brandproof-api-h2pc.onrender.com/docs · **Round 3 submission:** [SUBMISSION.md](SUBMISSION.md) and `BrandProof_Round3.pdf`
+**Live demo:** https://brand-proof-three.vercel.app · **API docs:** https://brandproof-api-h2pc.onrender.com/docs · **Round 3 submission:** [SUBMISSION.md](SUBMISSION.md) and **BrandProof_Round3.pdf:** https://drive.google.com/drive/folders/1EN7UMvutHHz0789bJJaWSRn-RSwjj2Tc?usp=s
+haring
 
 ## What's new in Round 3
 
 | Improvement promised in Round 2 | What shipped |
 | --- | --- |
-| **Semantic evidence** — match paraphrased claims like “lasts all weekend” to the right fact | Every fact and claim-like sentence is embedded; the nearest fact is retrieved from a vector index and the paraphrase is *interpreted* (“all weekend” ≈ 48 h) so it can be compared with the fact. Findings show a “Why this fact?” trace with similarity scores. Optional Gemini embeddings run alongside the offline embedder. |
-| **OCR for creatives** — read text in banners and scanned PDFs, check it with the same rules, mark the region | Tesseract reads each word with its bounding box. Image text and scanned PDF pages go through every text check, and each finding is drawn as a box on the creative. Gemini vision is a fallback; if neither is available, the finding list says so. Corrected creatives can be uploaded as the next revision. |
-| **Accounts + workspaces** — email login, real users in roles, isolated per-brand workspaces with their own audit logs | Email and password accounts (PBKDF2, hashed session tokens, login throttling), roles set per workspace (one person can hold several), invitations, last-admin protection, and full data isolation: rules, facts, submissions, images and the audit log are scoped to the workspace. An agency user can switch between brands. |
+| **Semantic evidence** - match paraphrased claims like “lasts all weekend” to the right fact | Every fact and claim-like sentence is embedded; the nearest fact is retrieved from a vector index and the paraphrase is *interpreted* (“all weekend” ≈ 48 h) so it can be compared with the fact. Findings show a “Why this fact?” trace with similarity scores. Optional Gemini embeddings run alongside the offline embedder. |
+| **OCR for creatives** - read text in banners and scanned PDFs, check it with the same rules, mark the region | Tesseract reads each word with its bounding box. Image text and scanned PDF pages go through every text check, and each finding is drawn as a box on the creative. Gemini vision is a fallback; if neither is available, the finding list says so. Corrected creatives can be uploaded as the next revision. |
+| **Accounts + workspaces** - email login, real users in roles, isolated per-brand workspaces with their own audit logs | Email and password accounts (PBKDF2, hashed session tokens, login throttling), roles set per workspace (one person can hold several), invitations, last-admin protection, and full data isolation: rules, facts, submissions, images and the audit log are scoped to the workspace. An agency user can switch between brands. |
 | UI/UX | Complete redesign: sign-in with one-click demo accounts, sidebar and workspace switcher, a role-aware home with a setup checklist, review queue, drag-and-drop upload, a review screen with proof marks and image regions, decision progress, keyboard navigation (j / k), toasts, a team page, an activity feed, a “Test a claim” tool, and a mobile layout. |
 
 ## Quick start
