@@ -1,3 +1,9 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/public/brand/logo-dark.png">
+    <img src="frontend/public/brand/logo-light.png" alt="BrandProof" width="320">
+  </picture>
+</p>
 <p align="center"><strong>Pre-publication brand governance: AI suggests, humans decide</strong></p>
 
 # BrandProof
