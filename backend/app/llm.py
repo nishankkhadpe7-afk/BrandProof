@@ -103,6 +103,9 @@ def complete_json(system: str, user: str, timeout: float = 30.0):
             if e.response.status_code in (404, 400) and "model" in e.response.text.lower() or e.response.status_code == 404:
                 log.warning("LLM model %s unavailable (%s), trying next", model, e.response.status_code)
                 continue  # retired or unknown model: try the next one
+            if e.response.status_code in (429, 500, 502, 503, 504):
+                log.warning("LLM model %s busy (%s), trying next", model, e.response.status_code)
+                continue  # overloaded or rate-limited: another model usually answers
             log.warning("LLM call failed (%s/%s): %s", p, model, str(e).replace(key, "***"))
             return None
         except httpx.TimeoutException:
