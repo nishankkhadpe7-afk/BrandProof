@@ -6,8 +6,7 @@ BrandProof checks marketing content before it goes live. It turns written brand 
 
 > Scope: a working prototype using two fictional brands (Lumora / Aura Earbuds and Verdant Oat Co.). Results come from seeded guidelines and facts, not measured customer data.
 
-**Live demo:** https://brand-proof-three.vercel.app · **API docs:** https://brandproof-api-h2pc.onrender.com/docs · **Round 3 submission:** [SUBMISSION.md](SUBMISSION.md) and **BrandProof_Round3.pdf:** https://drive.google.com/drive/folders/1EN7UMvutHHz0789bJJaWSRn-RSwjj2Tc?usp=s
-haring
+**Live demo:** https://brand-proof-three.vercel.app · **API docs:** https://brandproof-api-h2pc.onrender.com/docs · **Round 3 submission:** [SUBMISSION.md](SUBMISSION.md) and **BrandProof_Round3.pdf:** https://drive.google.com/drive/folders/1EN7UMvutHHz0789bJJaWSRn-RSwjj2Tc?usp=sharing
 
 ## What's new in Round 3
 
