@@ -63,5 +63,10 @@ def _startup():
     if os.environ.get("BRANDPROOF_AUTOSEED", "1") == "1" and conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
         import sys
         from . import seed
-        seed.seed(sys.modules[__name__])
+        from . import llm
+        llm._off["seeding"] = True  # demo data compiles with the deterministic engine; saves API quota
+        try:
+            seed.seed(sys.modules[__name__])
+        finally:
+            llm._off["seeding"] = False
     jobs.start()

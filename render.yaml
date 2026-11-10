@@ -19,6 +19,8 @@ services:
         value: gemini-flash-lite-latest
       - key: GEMINI_API_KEY
         sync: false
+      - key: GROQ_API_KEY
+        sync: false
       - key: GMAIL_CLIENT_ID     # optional email via Gmail API (see README); or set RESEND_API_KEY instead
         sync: false
       - key: GMAIL_CLIENT_SECRET
