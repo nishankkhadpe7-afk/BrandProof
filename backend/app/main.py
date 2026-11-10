@@ -25,7 +25,10 @@ from .routes.workspaces import *  # noqa: F401,F403
 app = FastAPI(title="BrandProof API", version="0.4.0",
               description="Pre-publication gate for brand-safe content. AI suggests; humans decide.")
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+_origins = [o.strip().rstrip("/") for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
+if "*" not in _origins:
+    _origins += ["null", "https://www.figma.com"]  # Figma plugin iframes send Origin: null; auth is a bearer token, not cookies
+app.add_middleware(CORSMiddleware, allow_origins=_origins,
                    allow_methods=["*"], allow_headers=["*"], expose_headers=["Retry-After"])
 FIELD = {"title": "Title", "email": "Email", "password": "Password", "name": "Name", "key": "Key", "label": "Label",
          "value": "Value", "text": "Text", "file": "File", "decision": "Decision", "roles": "Roles", "nodes": "Selection"}
