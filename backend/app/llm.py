@@ -6,7 +6,7 @@ Env:
   OPENAI_API_KEY / GEMINI_API_KEY / ANTHROPIC_API_KEY
   LLM_MODEL (optional override)
   GROQ_API_KEY (optional): used as a fallback when the main provider is busy, rate-limited or fails
-  GROQ_MODEL (optional, default llama-3.3-70b-versatile)
+  GROQ_MODEL (optional, default openai/gpt-oss-120b)
 """
 import json
 import logging
@@ -22,7 +22,7 @@ FALLBACKS = {
     "gemini": ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-2.5-flash-lite"],
     "openai": ["gpt-4.1-mini", "gpt-4o-mini"],
     "anthropic": ["claude-haiku-5-5", "claude-sonnet-5-5"],
-    "groq": ["llama-3.1-8b-instant", "openai/gpt-oss-20b"],
+    "groq": ["openai/gpt-oss-20b", "qwen/qwen3.6-27b"],
 }
 _working: dict[str, str] = {}  # provider -> model that last worked
 
@@ -30,7 +30,7 @@ DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
     "gemini": "gemini-flash-lite-latest",
     "anthropic": "claude-haiku-5-5",
-    "groq": "llama-3.3-70b-versatile",
+    "groq": "openai/gpt-oss-120b",
 }
 
 
