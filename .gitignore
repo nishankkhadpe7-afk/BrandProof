@@ -6,3 +6,6 @@ backend/brandproof.db
 backend/uploads/
 .env
 *.tsbuildinfo
+
+# local assistant outputs
+Claude outputs/

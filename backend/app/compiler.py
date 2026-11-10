@@ -111,6 +111,16 @@ def _classify(s: str) -> list[tuple[str, dict]]:
     if re.search(r"\bclaims?\b", low) and re.search(r"approved|evidence|fact sheet|verified|source|backed", low):
         topics = re.findall(r"\b(battery|price|pricing|performance|speed|health|environment(?:al)?|sustainab\w*|"
                             r"water\w*|warranty|award\w*|ranking|clinical\w*|durab\w*|noise|charging)\b", low)
+        if not topics:
+            # any domain: take the words right before "claim(s)", or the list after "about"
+            # e.g. "All caffeine claims ..." -> caffeine; "claims about protein, sugar or fibre" -> protein, sugar, fibre
+            stop = {"all", "any", "every", "our", "the", "a", "an", "performance", "product", "marketing", "factual", "such", "these", "those"}
+            m = re.search(r"\bclaims?\s+(?:about|on|regarding|for)\s+([a-z ,/-]+?)(?:\s+must|\s+should|\s+need|\.|$)", low)
+            if m:
+                topics = [t for t in re.split(r",|\bor\b|\band\b|/", m.group(1)) if t.strip()]
+            else:
+                topics = re.findall(r"\b([a-z][a-z-]{2,})\s+(?:and\s+[a-z-]+\s+)?claims?\b", low)
+            topics = [t.strip() for t in topics if t.strip() and t.strip() not in stop]
         return [("claim_evidence", {"topics": sorted(set(topics)) or None})]
 
     if re.search(r"\b(never use|do not use|don't use|avoid (?:the )?(?:words?|terms?|phrases?)|banned|prohibited|not allowed)\b", low) and q:

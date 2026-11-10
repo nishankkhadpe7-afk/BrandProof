@@ -1,22 +1,33 @@
 services:
   - type: web
     name: brandproof-api
-    runtime: python
+    runtime: docker
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.7
       - key: BRANDPROOF_AUTOSEED
+        value: "1"
+      - key: BRANDPROOF_DEMO
         value: "1"
       - key: CORS_ORIGINS
         value: "*"
       - key: LLM_PROVIDER
         value: gemini
       - key: LLM_MODEL
-        value: gemini-2.5-flash
+        value: gemini-flash-lite-latest
       - key: GEMINI_API_KEY
+        sync: false
+      - key: GMAIL_CLIENT_ID     # optional email via Gmail API (see README); or set RESEND_API_KEY instead
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: MAIL_FROM           # e.g. BrandProof <you@gmail.com>
+        sync: false
+      - key: APP_URL             # your Vercel URL, used in email links
+        sync: false
+      - key: DATABASE_URL        # optional: postgresql://... (Neon / Supabase / Render Postgres). Empty = SQLite
         sync: false

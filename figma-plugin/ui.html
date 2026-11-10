@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --bg: var(--figma-color-bg, #fff); --fg: var(--figma-color-text, #15171c); --mute: var(--figma-color-text-secondary, #80858f);
+    --line: var(--figma-color-border, #e6e6ea); --hover: var(--figma-color-bg-hover, #f3f3f5); --brand: var(--figma-color-bg-inverse, #15171c);
+    --onbrand: var(--figma-color-text-oninverse, #fff); --red: #c33140; --amber: #a35f00; --purple: #7442b8; --slate: #56708a; --green: #22845a; --orange: #c4531c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 12.5px/1.5 Inter, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  .wrap { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 14px; margin: 0; font-weight: 600; }
+  .muted { color: var(--mute); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  label { display: flex; flex-direction: column; gap: 4px; font-weight: 500; }
+  input, select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; width: 100%; }
+  input:focus, select:focus { outline: 2px solid var(--figma-color-border-selected, #0d99ff); outline-offset: -1px; }
+  button { font: inherit; cursor: pointer; border-radius: 6px; padding: 7px 11px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-weight: 500; }
+  button:hover { background: var(--hover); }
+  button.primary { background: var(--brand); color: var(--onbrand); border-color: var(--brand); }
+  button.link { border: 0; background: none; padding: 0; color: var(--figma-color-text-brand, #0d99ff); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+  .err { color: var(--red); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 11.5px; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .st-contradicted { color: var(--red); } .st-expired { color: var(--amber); } .st-conflicting { color: var(--purple); }
+  .st-unverified { color: var(--slate); } .st-supported { color: var(--green); } .st-violation { color: var(--orange); }
+  .f { border-top: 1px solid var(--line); padding: 10px 0; display: flex; flex-direction: column; gap: 4px; }
+  .f:first-child { border-top: 0; }
+  .f q { font-weight: 600; font-size: 13px; }
+  .f .sugg { border: 1px solid #cfe6d9; border-radius: 6px; padding: 4px 7px; }
+  .f .sugg b { color: var(--green); font-weight: 600; margin-right: 6px; }
+  .f.done { opacity: .5; }
+  .sum { padding: 9px 11px; border-radius: 8px; background: var(--hover); }
+  .demo button { width: 100%; text-align: left; display: flex; justify-content: space-between; margin-top: 6px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row"><span class="brand grow">✓ BrandProof</span><span id="who" class="muted"></span><button id="signout" class="link hidden">Sign out</button></div>
+
+  <!-- connect -->
+  <section id="v-connect" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+    <h1>Connect to BrandProof</h1>
+    <label>Server (API) address<input id="server" placeholder="https://your-api.onrender.com" /></label>
+    <label>Web app address (optional, for links)<input id="webapp" placeholder="https://your-app.vercel.app" /></label>
+    <label>Email<input id="email" type="email" autocomplete="email" /></label>
+    <label>Password<input id="password" type="password" autocomplete="current-password" /></label>
+    <div id="c-err" class="err"></div>
+    <button id="signin" class="primary">Sign in</button>
+    <div id="demo" class="demo"></div>
+  </section>
+
+  <!-- main -->
+  <section id="v-main" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+    <label>Brand workspace<select id="ws"></select></label>
+    <div class="card">
+      <div id="sel-title" style="font-weight:600">Nothing selected</div>
+      <div id="sel-sub" class="muted">Select frames or text layers to check.</div>
+    </div>
+    <label class="row" style="flex-direction:row;font-weight:400"><input id="save" type="checkbox" style="width:auto" /> Also send to the review queue, with a frame image</label>
+    <button id="check" class="primary" disabled>Check selection</button>
+    <div id="m-err" class="err"></div>
+    <div id="results"></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const LABEL = { contradicted: "Contradicted", expired: "Expired", conflicting: "Conflicting", unverified: "Unverified", supported: "Supported", violation: "Rule broken" };
+let S = { server: "", webapp: "", token: "", ws: "" };
+let sel = { nodes: [] };
+let findings = [];
+const post = (m) => parent.postMessage({ pluginMessage: m }, "*");
+const save = () => post({ type: "save-settings", settings: S });
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(S.token ? { Authorization: "Bearer " + S.token } : {}), ...(S.ws ? { "X-Workspace": S.ws } : {}) };
+  let r;
+  try { r = await fetch(S.server.replace(/\/$/, "") + path, { ...opts, headers }); }
+  catch { throw new Error("Can't reach the server. Check the address, or wait a minute if it's waking up."); }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && S.token) { S.token = ""; save(); show(); }
+  if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : "Request failed (" + r.status + ")");
+  return j;
+}
+
+function show() {
+  const signed = !!S.token;
+  $("v-connect").classList.toggle("hidden", signed);
+  $("v-main").classList.toggle("hidden", !signed);
+  $("signout").classList.toggle("hidden", !signed);
+  if (!signed) { $("who").textContent = ""; $("server").value = S.server; $("webapp").value = S.webapp || ""; loadDemo(); }
+  else loadMe();
+}
+
+async function loadDemo() {
+  $("demo").innerHTML = "";
+  if (!S.server) return;
+  try {
+    const d = await api("/api/auth/demo");
+    if (!d.length) return;
+    $("demo").innerHTML = '<div class="muted">Or use a demo account</div>' + d.filter((u) => u.workspaces.some((w) => w.roles.some((r) => ["creator", "brand_owner", "admin"].includes(r))))
+      .map((u) => `<button data-email="${esc(u.email)}"><span>${esc(u.name)}</span><span class="muted">${esc(u.workspaces[0].roles[0].replace("_", " "))}</span></button>`).join("");
+    $("demo").querySelectorAll("button").forEach((b) => b.onclick = () => signin(() => api("/api/auth/demo", { method: "POST", body: JSON.stringify({ email: b.dataset.email }) })));
+  } catch {}
+}
+
+async function signin(call) {
+  $("c-err").textContent = "";
+  S.server = $("server").value.trim(); S.webapp = $("webapp").value.trim();
+  if (!S.server) { $("c-err").textContent = "Enter the server address."; return; }
+  try { const r = await call(); S.token = r.token; S.ws = String(r.workspaces[0]?.id || ""); save(); show(); }
+  catch (e) { $("c-err").textContent = e.message; }
+}
+
+async function loadMe() {
+  try {
+    const me = await api("/api/auth/me");
+    $("who").textContent = me.user.name;
+    if (!me.workspaces.some((w) => String(w.id) === S.ws)) { S.ws = String(me.workspaces[0]?.id || ""); save(); }
+    $("ws").innerHTML = me.workspaces.map((w) => `<option value="${w.id}" ${String(w.id) === S.ws ? "selected" : ""}>${esc(w.name)}</option>`).join("");
+  } catch (e) { $("m-err").textContent = e.message; }
+}
+
+function renderSel() {
+  const n = sel.nodes.length;
+  $("sel-title").textContent = sel.count ? sel.title : "Nothing selected";
+  $("sel-sub").textContent = sel.count ? (n ? `${n} text layer${n === 1 ? "" : "s"} to check` : "No text in this selection") : "Select frames or text layers to check.";
+  $("check").disabled = !n;
+}
+
+function render(res) {
+  const open = findings.filter((f) => f.status !== "supported");
+  const block = open.filter((f) => ["high", "medium"].includes(f.severity) && !f.applied).length;
+  let html = `<div class="sum">${open.length ? `<b>${open.length} issue${open.length === 1 ? "" : "s"}</b>, ${block} must be fixed or justified before approval.` : "<b>No issues found.</b> Claims match approved facts and rules."}`;
+  if (res && res.submission_id) html += ` <button class="link" id="openweb">Open in review queue</button>`;
+  html += "</div>";
+  html += findings.map((f, i) => `<div class="f ${f.applied ? "done" : ""}">
+    <div class="row"><span class="badge st-${f.status}">${LABEL[f.status] || f.status}</span><span class="muted grow">${esc(f.node_name || f.category)}</span>${f.engine === "semantic" ? '<span class="muted">by meaning</span>' : ""}</div>
+    <q>${esc(f.excerpt)}</q><div>${esc(f.reason)}</div>
+    ${f.suggestion ? `<div class="sugg"><b>Suggested</b>${esc(f.suggestion.trim())}</div>` : ""}
+    <div class="row">${f.node_id ? `<button data-focus="${i}">Show layer</button>` : ""}${f.fixable && !f.applied ? `<button class="primary" data-fix="${i}">Apply fix</button>` : ""}${f.applied ? '<span class="muted">Fixed</span>' : ""}</div>
+  </div>`).join("");
+  $("results").innerHTML = html;
+  $("results").querySelectorAll("[data-focus]").forEach((b) => b.onclick = () => post({ type: "focus", id: findings[b.dataset.focus].node_id }));
+  $("results").querySelectorAll("[data-fix]").forEach((b) => b.onclick = () => {
+    const f = findings[b.dataset.fix];
+    post({ type: "apply", key: b.dataset.fix, id: f.node_id, start: f.start, end: f.end, expect: f.excerpt, text: f.suggestion.trim() });
+  });
+  const o = $("openweb");
+  if (o) o.onclick = () => S.webapp ? post({ type: "open", url: S.webapp.replace(/\/$/, "") + res.submission_url_path }) : post({ type: "notify", text: "Add the web app address in settings to open links." });
+  lastRes = res;
+}
+let lastRes = null;
+let exportWaiter = null;
+
+$("check").onclick = async () => {
+  $("m-err").textContent = ""; $("check").disabled = true; $("check").textContent = "Checking…";
+  try {
+    let image = null;
+    if ($("save").checked && sel.canExport) image = await new Promise((res) => { exportWaiter = res; post({ type: "export" }); });
+    const res = await api("/api/integrations/figma/check", { method: "POST", body: JSON.stringify({
+      title: sel.title, file_name: sel.file, nodes: sel.nodes, save: $("save").checked, image_png_b64: image }) });
+    findings = res.findings.sort((a, b) => (a.status === "supported") - (b.status === "supported"));
+    render(res);
+  } catch (e) { $("m-err").textContent = e.message; }
+  $("check").textContent = "Check selection"; renderSel();
+};
+$("signin").onclick = () => signin(() => api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: $("email").value, password: $("password").value }) }));
+$("server").onchange = () => { S.server = $("server").value.trim(); save(); loadDemo(); };
+$("ws").onchange = () => { S.ws = $("ws").value; save(); findings = []; $("results").innerHTML = ""; };
+$("signout").onclick = () => { api("/api/auth/logout", { method: "POST" }).catch(() => {}); S.token = ""; save(); show(); };
+
+onmessage = (e) => {
+  const m = e.data.pluginMessage || {};
+  if (m.type === "init") { S = { ...S, ...m.settings }; show(); }
+  else if (m.type === "selection") { sel = m; renderSel(); }
+  else if (m.type === "export") { exportWaiter && exportWaiter(m.b64); exportWaiter = null; }
+  else if (m.type === "applied") {
+    const f = findings[m.key]; f.applied = true;
+    const delta = f.suggestion.trim().length - (f.end - f.start);
+    findings.forEach((g) => { if (g !== f && g.node_id === f.node_id && g.start >= f.end) { g.start += delta; g.end += delta; } });
+    render(lastRes);
+  } else if (m.type === "error") { $("m-err").textContent = m.message; }
+};
+post({ type: "init" });
+</script>
+</body>
+</html>

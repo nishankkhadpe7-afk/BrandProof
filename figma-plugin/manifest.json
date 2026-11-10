@@ -1,0 +1,14 @@
+{
+  "name": "BrandProof",
+  "id": "brandproof-dev",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["*"],
+    "reasoning": "Sends the selected text to your own BrandProof server, whose address you enter in the plugin.",
+    "devAllowedDomains": ["http://localhost:8000"]
+  }
+}

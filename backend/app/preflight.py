@@ -8,15 +8,16 @@ checks use the LLM only when configured.
 import re
 from datetime import date
 
-from . import compiler, llm
+from . import compiler, llm, ocr, semantic
 
 # ---------------------------------------------------------------- helpers
 
 UNIT_NORM = {
     "h": "hours", "hr": "hours", "hrs": "hours", "hour": "hours", "hours": "hours",
     "min": "minutes", "mins": "minutes", "minute": "minutes", "minutes": "minutes",
-    "day": "days", "days": "days", "year": "years", "years": "years", "yr": "years", "yrs": "years",
-    "%": "%", "percent": "%", "x": "x", "times": "x", "mah": "mAh", "g": "g", "gram": "g", "grams": "g",
+    "day": "days", "days": "days", "week": "weeks", "weeks": "weeks", "month": "months", "months": "months", "year": "years", "years": "years", "yr": "years", "yrs": "years",
+    "%": "%", "percent": "%", "x": "x", "times": "x", "mah": "mAh", "mg": "mg", "ml": "ml", "kg": "kg", "kcal": "kcal", "cal": "kcal", "calories": "kcal",
+    "litre": "l", "litres": "l", "liter": "l", "liters": "l", "watt": "W", "watts": "W", "w": "W", "gb": "GB", "tb": "TB", "g": "g", "gram": "g", "grams": "g",
     "db": "dB", "m": "m", "meter": "m", "meters": "m", "metre": "m", "metres": "m", "ms": "ms",
     "$": "USD", "usd": "USD", "₹": "INR", "inr": "INR", "rs": "INR", "rs.": "INR", "€": "EUR", "£": "GBP",
 }
@@ -24,8 +25,8 @@ UNIT_NORM = {
 NUM_CLAIM = re.compile(
     r"(?P<qual>\b(?:up to|over|more than|at least|under|less than|only|just)\s+)?"
     r"(?P<cur>[$₹€£]|\bRs\.?\s?|\bINR\s?)?"
-    r"(?P<num>\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)"
-    r"(?:(?:\s|-)?(?P<unit>hours?|hrs?|hr|h|percent|%|minutes?|mins?|days?|years?|yrs?|mAh|grams?|g|dB|ms|m|metres?|meters?|x|times)(?![A-Za-z]))?",
+    r"(?P<num>\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?|\b(?:one|two|three|four|five|six|seven|ten|twelve|a)(?=[\s-]+(?:years?|months?|weeks?|days?|hours?)\b))"
+    r"(?:(?:\s|-)?(?P<unit>hours?|hrs?|hr|h|percent|%|minutes?|mins?|days?|weeks?|months?|years?|yrs?|mAh|mg|ml|kg|kcal|cal|calories|litres?|liters?|watts?|W|GB|TB|grams?|g|dB|ms|m|metres?|meters?|x|times)(?![A-Za-z]))?",
     re.I)
 
 QUAL_CLAIMS = [r"#\s?1\b", r"\bnumber one\b", r"\bclinically proven\b", r"\baward[- ]winning\b", r"\bbest[- ]selling\b",
@@ -36,6 +37,23 @@ HYPE_REPLACEMENTS = {"revolutionary": "new", "game-changing": "notable", "game c
                      "best-in-class": "high-quality", "unbeatable": "strong", "insane": "impressive",
                      "mind-blowing": "impressive", "perfect": "great", "ultimate": "complete",
                      "world-class": "high-quality", "groundbreaking": "new", "magical": "effortless"}
+
+WORD_NUM = {"a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "ten": 10, "twelve": 12}
+# convertible units: "30 days" or "6 months" can be compared with a warranty stored in years
+TO_BASE = {"minutes": ("time", 1 / 60), "hours": ("time", 1), "days": ("span", 1), "weeks": ("span", 7),
+           "months": ("span", 30.44), "years": ("span", 365.25)}
+
+
+def _conv(value: float, unit: str, target: str | None):
+    """Convert value from unit to target; None if incompatible."""
+    unit, target = (unit or "").lower(), (target or "").lower()
+    if unit == target:
+        return value
+    a, b = TO_BASE.get(unit), TO_BASE.get(target)
+    if a and b and a[0] == b[0]:
+        return value * a[1] / b[1]
+    return None
+
 
 STATUS_SEVERITY = {"contradicted": "high", "expired": "high", "conflicting": "high", "unverified": "medium", "supported": "info"}
 
@@ -90,7 +108,7 @@ def check_claims(text: str, facts: list[dict], rules: list[dict]) -> list[dict]:
     for f in facts:
         for phrase in f.get("disallowed") or []:
             for m in _word_re(phrase).finditer(text):
-                if _overlaps(spans, m.start(), m.end()):
+                if _overlaps(spans, m.start(), m.end()) or semantic.NEGATED.search(text[max(0, m.start() - 40):m.start()]):
                     continue
                 spans.append((m.start(), m.end()))
                 r = rule_for([f["key"], *f.get("aliases", [])])
@@ -111,11 +129,14 @@ def check_claims(text: str, facts: list[dict], rules: list[dict]) -> list[dict]:
         a, b = m.start(), m.end()
         if _overlaps(spans, a, b):
             continue
-        value = float(m.group("num").replace(",", ""))
+        raw = m.group("num").lower()
+        value = float(WORD_NUM[raw]) if raw in WORD_NUM else float(raw.replace(",", ""))
         sent = _sentence_of(text, a).lower()
         cands = [f for f in numeric_facts
-                 if (f.get("unit") or "").lower() == unit.lower()
+                 if _conv(value, unit, f.get("unit")) is not None
                  and any(_word_re(al).search(sent) for al in [f["label"], *f.get("aliases", [])])]
+        if cands:
+            value = _conv(value, unit, cands[0].get("unit"))
         spans.append((a, b))
         excerpt = m.group(0).strip()
         if not cands:
@@ -343,7 +364,7 @@ def _region(img, target, tol=30) -> dict | None:
     if not xs:
         return None
     return {"x": int(min(xs) * sx), "y": int(min(ys) * sy), "w": int((max(xs) - min(xs) + 1) * sx),
-            "h": int((max(ys) - min(ys) + 1) * sy), "img_w": img.width, "img_h": img.height}
+            "h": int((max(ys) - min(ys) + 1) * sy), "img_w": img.width, "img_h": img.height, "page": 0}
 
 
 def check_visual(img, meta: dict, rules: list[dict]) -> list[dict]:
@@ -410,19 +431,29 @@ def ai_extra_claims(text: str, existing: list[dict]) -> list[dict]:
 
 # ---------------------------------------------------------------- orchestrator
 
-def run(text: str, rules: list[dict], facts: list[dict], *, img=None, meta=None, alt_text=None) -> list[dict]:
+def run(text: str, rules: list[dict], facts: list[dict], *, img=None, meta=None, alt_text=None,
+        ocr_words=None, conn=None, ocr_engine="n/a") -> list[dict]:
     findings = []
     findings += check_claims(text, facts, rules)
     findings += check_terms_tone(text, rules)
     findings += check_accessibility(text, rules, img is not None, alt_text)
     if img is not None and meta:
         findings += check_visual(img, meta, rules)
+    findings += semantic.check_semantic(text, facts, rules, findings, conn)
     findings += ai_extra_claims(text, findings)
+    if img is not None and ocr_engine is None:
+        findings.append(dict(category="visual", status="unverified", severity="low", start=None, end=None, excerpt="(text in image)",
+                             reason="Text inside this creative could not be read: no OCR engine is available on the server. "
+                                    "Install Tesseract (or set a Gemini key) to check claims and terms inside images.",
+                             suggestion=None, source_ref=None, confidence=1.0))
     for f in findings:
+        if ocr_words and f.get("start") is not None and not f.get("region"):
+            f["region"] = ocr.region_for(f["start"], f["end"], ocr_words)
         f.setdefault("engine", "deterministic")
         f.setdefault("rule_id", None)
         f.setdefault("fact_id", None)
         f.setdefault("region", None)
+        f.setdefault("match", None)
         f["decision"] = "n/a" if f["status"] == "supported" and f.get("suggestion") is None else "pending"
     order = {"high": 0, "medium": 1, "low": 2, "info": 3}
     findings.sort(key=lambda f: (order.get(f["severity"], 4), f["start"] if f["start"] is not None else 1e9))
